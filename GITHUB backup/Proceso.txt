@@ -1,1 +1,4 @@
-
+Descargar los archivos(3) RAR que contienen el instalador del GITHUB desktop, desempaquetarlos y procedera la instalación.
+Crear la carpeta RESPALDO en C: y copiar dentro de el el contenido de los archivos y carpetas a respaldar .
+Descarga el archivo Respaldo.txt, una vez descargado modificar su extensión a BAT.
+Ejecutar el Respaldo.bat
