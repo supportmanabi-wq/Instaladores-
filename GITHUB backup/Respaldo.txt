@@ -1,0 +1,119 @@
+@echo off
+title Respaldo Automatico y Subida a GitHub
+color 0B
+
+:: =======================================================
+:: 0. Validar si Git esta instalado
+:: =======================================================
+git --version >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    color 0C
+    echo [ERROR CRITICO] Git no esta instalado o no se reconoce.
+    pause
+    exit /b
+)
+
+:: =======================================================
+:: CONFIGURACION DE VARIABLES Y CREDENCIALES
+:: =======================================================
+for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set datetime=%%I
+set "ANIO=%datetime:~0,4%"
+set "MES=%datetime:~4,2%"
+set "DIA=%datetime:~6,2%"
+
+set "FECHA_FIJA=%DIA%-%MES%-%ANIO%"
+set "CARPETA_MES=%MES%-%ANIO%"
+
+set "ORIGEN=C:\RESPALDO"
+set "DESTINO_BACKUP=C:\BACKUP"
+set "RAIZ_REPO=C:\Respaldos"
+set "NOMBRE_BASE=Backup-%FECHA_FIJA%"
+
+:: === TUS CREDENCIALES ===
+set "CORREO=supportmanabi@gmail.com"
+set "USUARIO_GITHUB=supportmanabi-wq"
+
+:: ---> PEGA TU TOKEN AQUI (Debe empezar por ghp_) <---
+set "TOKEN_GITHUB=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"
+
+:: URL con el token de acceso inyectado
+set "URL_GITHUB=https://%USUARIO_GITHUB%:%TOKEN_GITHUB%@github.com/%USUARIO_GITHUB%/Respaldos.git"
+
+echo =======================================================
+echo   Iniciando Respaldo - %FECHA_FIJA%
+echo =======================================================
+echo.
+
+:: =======================================================
+:: 1. Validar WinRAR
+:: =======================================================
+set "WINRAR=C:\Program Files\WinRAR\Rar.exe"
+if not exist "%WINRAR%" set "WINRAR=C:\Program Files (x86)\WinRAR\Rar.exe"
+
+if not exist "%WINRAR%" (
+    echo [ERROR CRITICO] No se encontro Rar.exe.
+    pause
+    exit /b
+)
+
+:: =======================================================
+:: 2. Validar carpetas
+:: =======================================================
+if not exist "%ORIGEN%\" (
+    echo [ERROR CRITICO] La carpeta origen C:\RESPALDO no existe.
+    pause
+    exit /b
+)
+
+if not exist "%DESTINO_BACKUP%" mkdir "%DESTINO_BACKUP%"
+if not exist "%RAIZ_REPO%\%CARPETA_MES%" mkdir "%RAIZ_REPO%\%CARPETA_MES%"
+
+if exist "%DESTINO_BACKUP%\%NOMBRE_BASE%*.rar" del /f /q "%DESTINO_BACKUP%\%NOMBRE_BASE%*.rar"
+
+:: =======================================================
+:: 3. Comprimir
+:: =======================================================
+echo [1/3] Comprimiendo archivos de C:\RESPALDO...
+"%WINRAR%" a -r -m5 -ep1 -v25m -o+ -y "%DESTINO_BACKUP%\%NOMBRE_BASE%.rar" "%ORIGEN%\*"
+
+:: =======================================================
+:: 4. Copiar al Repositorio
+:: =======================================================
+if exist "%DESTINO_BACKUP%\%NOMBRE_BASE%*.rar" (
+    echo.
+    echo [2/3] Compresion exitosa. Copiando al repositorio local...
+    copy /Y "%DESTINO_BACKUP%\%NOMBRE_BASE%*.rar" "%RAIZ_REPO%\%CARPETA_MES%\"
+) else (
+    echo [ERROR] No se genero el archivo RAR.
+    pause
+    exit /b
+)
+
+:: =======================================================
+:: 5. Subida a GitHub
+:: =======================================================
+echo.
+echo [3/3] Sincronizando con GitHub...
+cd /d "%RAIZ_REPO%"
+
+if exist ".git" rmdir /s /q ".git"
+
+git init
+git config user.email "%CORREO%"
+git config user.name "%USUARIO_GITHUB%"
+git remote add origin "%URL_GITHUB%"
+
+echo Preparando archivos...
+git add .
+git commit -m "Respaldo automatico %FECHA_FIJA%"
+git branch -M main
+
+echo.
+echo Subiendo a la nube...
+git push -u origin main --force
+
+echo.
+echo ==========================================================
+echo PROCESO TERMINADO.
+echo ==========================================================
+pause
